@@ -2499,9 +2499,11 @@ iperf_new_stream(struct iperf_test *test, int s)
 {
     int i;
     struct iperf_stream *sp;
-    char template[] = "/tmp/iperf3.XXXXXX";
+	char template[MAX_PATH];
+	strcpy(template, "/tmp/iperf3.XXXXXX");
 
-    h_errno = 0;
+	WSASetLastError(0);
+    //h_errno = 0;
 
     sp = (struct iperf_stream *) malloc(sizeof(struct iperf_stream));
     if (!sp) {
@@ -2531,12 +2533,13 @@ iperf_new_stream(struct iperf_test *test, int s)
         free(sp);
         return NULL;
     }
-    if (unlink(template) < 0) {
+	/* This obviously won't work on Windows (whereas it does on linux).
+	if (unlink(template) < 0) {
         i_errno = IECREATESTREAM;
         free(sp->result);
         free(sp);
         return NULL;
-    }
+    }*/
     if (ftruncate(sp->buffer_fd, test->settings->blksize) < 0) {
         i_errno = IECREATESTREAM;
         free(sp->result);
@@ -2561,7 +2564,7 @@ iperf_new_stream(struct iperf_test *test, int s)
     sp->rcv = test->protocol->recv;
 
     if (test->diskfile_name != (char*) 0) {
-	sp->diskfile_fd = open(test->diskfile_name, test->sender ? O_RDONLY : (O_WRONLY|O_CREAT|O_TRUNC), S_IRUSR|S_IWUSR);
+	sp->diskfile_fd = open(test->diskfile_name, test->sender ? O_RDONLY : (O_WRONLY|O_CREAT|O_TRUNC)/*, S_IRUSR|S_IWUSR*/);
 	if (sp->diskfile_fd == -1) {
 	    i_errno = IEFILE;
             munmap(sp->buffer, sp->test->settings->blksize);
@@ -2692,7 +2695,7 @@ iperf_catch_sigend(void (*handler)(int))
 {
     signal(SIGINT, handler);
     signal(SIGTERM, handler);
-    signal(SIGHUP, handler);
+    //signal(SIGHUP, handler);
 }
 
 /**
@@ -2735,7 +2738,7 @@ iperf_create_pidfile(struct iperf_test *test)
     if (test->pidfile) {
 	int fd;
 	char buf[8];
-	fd = open(test->pidfile, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR|S_IWUSR);
+	fd = open(test->pidfile, O_WRONLY | O_CREAT | O_TRUNC/*, S_IRUSR|S_IWUSR*/);
 	if (fd < 0) {
 	    return -1;
 	}

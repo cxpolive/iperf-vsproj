@@ -33,7 +33,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/select.h>
-#include <sys/uio.h>
+//#include <sys/uio.h>
 #include <arpa/inet.h>
 
 #include "iperf.h"
@@ -193,7 +193,7 @@ iperf_handle_message_client(struct iperf_test *test)
     int32_t err;
 
     /*!!! Why is this read() and not Nread()? */
-    if ((rval = read(test->ctrl_sck, (char*) &test->state, sizeof(signed char))) <= 0) {
+    if ((rval = recv(test->ctrl_sck, (char*) &test->state, sizeof(signed char), 0)) <= 0) {
         if (rval == 0) {
             i_errno = IECTRLCLOSE;
             return -1;

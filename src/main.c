@@ -39,8 +39,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+//#include <arpa/inet.h>
+//#include <netdb.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -60,6 +60,13 @@ static int run(struct iperf_test *test);
 int
 main(int argc, char **argv)
 {
+	WSADATA wsaData;
+	int wsaErr = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (wsaErr != 0) {
+		printf("WSAStartup failed with error: %d\n", wsaErr);
+		return 1;
+	}
+
     struct iperf_test *test;
 
     // XXX: Setting the process affinity requires root on most systems.
@@ -96,6 +103,11 @@ main(int argc, char **argv)
         err("couldn't change CPU affinity");
 #endif
 
+	// Try to increase process priority
+	if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)) {
+		fprintf(stderr, "Note: Failed to change priority to HIGH\n");
+	}
+
     test = iperf_new_test();
     if (!test)
         iperf_errexit(NULL, "create new test error - %s", iperf_strerror(i_errno));
@@ -125,11 +137,12 @@ run(struct iperf_test *test)
     switch (test->role) {
         case 's':
 	    if (test->daemon) {
-		int rc = daemon(0, 0);
+			iperf_errexit(test, "error - %s", "daemon unsupported on windows");
+		/*int rc = daemon(0, 0);
 		if (rc < 0) {
 		    i_errno = IEDAEMON;
 		    iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
-		}
+		}*/
 	    }
 	    consecutive_errors = 0;
 	    if (iperf_create_pidfile(test) < 0) {

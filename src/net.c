@@ -31,13 +31,13 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/errno.h>
+//#include <sys/errno.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <assert.h>
-#include <netdb.h>
+//#include <netdb.h>
 #include <string.h>
-#include <sys/fcntl.h>
+//#include <sys/fcntl.h>
 
 #ifdef HAVE_SENDFILE
 #ifdef linux
@@ -152,15 +152,13 @@ netannounce(int domain, int proto, char *local, int port)
     }
     hints.ai_socktype = proto;
     hints.ai_flags = AI_PASSIVE;
-    if (getaddrinfo(local, portstr, &hints, &res) != 0)
-        return -1; 
-
+	if (getaddrinfo(local, portstr, &hints, &res) != 0)
+		return -1;
     s = socket(res->ai_family, proto, 0);
     if (s < 0) {
 	freeaddrinfo(res);
         return -1;
     }
-
     opt = 1;
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, 
 		   (char *) &opt, sizeof(opt)) < 0) {
@@ -217,11 +215,11 @@ netannounce(int domain, int proto, char *local, int port)
 int
 Nread(int fd, char *buf, size_t count, int prot)
 {
-    register ssize_t r;
+	register ssize_t r;
     register size_t nleft = count;
 
     while (nleft > 0) {
-        r = read(fd, buf, nleft);
+		r = recv(fd, buf, nleft, 0);
         if (r < 0) {
             if (errno == EINTR || errno == EAGAIN)
                 break;
@@ -248,7 +246,8 @@ Nwrite(int fd, const char *buf, size_t count, int prot)
     register size_t nleft = count;
 
     while (nleft > 0) {
-	r = write(fd, buf, nleft);
+		fflush(stdout);
+	r = send(fd, buf, nleft, 0);
 	if (r < 0) {
 	    switch (errno) {
 		case EINTR:
@@ -427,23 +426,11 @@ set_tcp_options(int sock, int no_delay, int mss)
 int
 setnonblocking(int fd, int nonblocking)
 {
-    int flags, newflags;
+	u_long mode = !!nonblocking;
+	int result;
 
-    flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
-        perror("fcntl(F_GETFL)");
-        return -1;
-    }
-    if (nonblocking)
-	newflags = flags | (int) O_NONBLOCK;
-    else
-	newflags = flags & ~((int) O_NONBLOCK);
-    if (newflags != flags)
-	if (fcntl(fd, F_SETFL, newflags) < 0) {
-	    perror("fcntl(F_SETFL)");
-	    return -1;
-	}
-    return 0;
+	result = ioctlsocket((SOCKET)fd, FIONBIO, mode);
+	return result;
 }
 
 /****************************************************************************/

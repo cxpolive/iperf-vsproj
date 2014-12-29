@@ -139,7 +139,7 @@ timeval_diff(struct timeval * tv0, struct timeval * tv1)
 }
 
 
-int
+/*int
 delay(int64_t ns)
 {
     struct timespec req, rem;
@@ -172,7 +172,7 @@ delay(int us)
     (void) select(1, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &tv);
     return 1;
 }
-#endif
+#endif*/
 
 
 void

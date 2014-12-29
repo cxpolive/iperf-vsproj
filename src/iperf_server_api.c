@@ -435,6 +435,8 @@ static jmp_buf sigend_jmp_buf;
 static void
 sigend_handler(int sig)
 {
+	printf("WTF\n");
+	fflush(stdout);
     longjmp(sigend_jmp_buf, 1);
 }
 
