@@ -132,7 +132,7 @@ iperf_sctp_accept(struct iperf_test * test)
             i_errno = IESENDMESSAGE;
             return -1;
         }
-        close(s);
+		_posix_closesocket(s);
     }
 
     return s;
@@ -155,7 +155,7 @@ iperf_sctp_listen(struct iperf_test *test)
     char portstr[6];
     int s, opt;
 
-    close(test->listener);
+	_posix_closesocket(test->listener);
    
     snprintf(portstr, 6, "%d", test->server_port);
     memset(&hints, 0, sizeof(hints));
@@ -181,7 +181,7 @@ iperf_sctp_listen(struct iperf_test *test)
             opt = 1;
         if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, 
 		       (char *) &opt, sizeof(opt)) < 0) {
-	    close(s);
+		_posix_closesocket(s);
 	    freeaddrinfo(res);
 	    i_errno = IEPROTOCOL;
 	    return -1;
@@ -191,14 +191,14 @@ iperf_sctp_listen(struct iperf_test *test)
 
     opt = 1;
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        close(s);
+		_posix_closesocket(s);
         freeaddrinfo(res);
         i_errno = IEREUSEADDR;
         return -1;
     }
 
     if (bind(s, (struct sockaddr *) res->ai_addr, res->ai_addrlen) < 0) {
-        close(s);
+		_posix_closesocket(s);
         freeaddrinfo(res);
         i_errno = IESTREAMLISTEN;
         return -1;
@@ -265,7 +265,7 @@ iperf_sctp_connect(struct iperf_test *test)
 
    
     if (connect(s, (struct sockaddr *) server_res->ai_addr, server_res->ai_addrlen) < 0 && errno != EINPROGRESS) {
-	close(s);
+	_posix_closesocket(s);
 	freeaddrinfo(server_res);
         i_errno = IESTREAMCONNECT;
         return -1;
@@ -274,14 +274,14 @@ iperf_sctp_connect(struct iperf_test *test)
 
     /* Send cookie for verification */
     if (Nwrite(s, test->cookie, COOKIE_SIZE, Psctp) < 0) {
-	close(s);
+	_posix_closesocket(s);
         i_errno = IESENDCOOKIE;
         return -1;
     }
 
     opt = 0;
     if(setsockopt(s, IPPROTO_SCTP, SCTP_DISABLE_FRAGMENTS, &opt, sizeof(opt)) < 0) {
-        close(s);
+        _posix_closesocket(s);
         freeaddrinfo(server_res);
         i_errno = IESETSCTPDISABLEFRAG;
         return -1;

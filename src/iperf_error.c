@@ -171,6 +171,7 @@ iperf_strerror(int i_errno)
         case IECONNECT:
             snprintf(errstr, len, "unable to connect to server");
             perr = 1;
+			herr = 1;
             break;
         case IEACCEPT:
             snprintf(errstr, len, "unable to accept connection from client");
@@ -356,6 +357,9 @@ iperf_strerror(int i_errno)
     } else if (errno && perr) {
         strncat(errstr, strerror(errno), len - strlen(errstr) - 1);
     }
+    /*else if (!errno && perr) {
+	printf("Expected errno to be set (perr=%d), but it is not\r\n", perr);
+    }*/
 
     return errstr;
 }

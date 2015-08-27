@@ -102,7 +102,7 @@ netdial(int domain, int proto, char *local, int local_port, char *server, int po
         }
 
         if (bind(s, (struct sockaddr *) local_res->ai_addr, local_res->ai_addrlen) < 0) {
-	    close(s);
+			_posix_closesocket(s);
 	    freeaddrinfo(local_res);
 	    freeaddrinfo(server_res);
             return -1;
@@ -111,8 +111,8 @@ netdial(int domain, int proto, char *local, int local_port, char *server, int po
     }
 
     ((struct sockaddr_in *) server_res->ai_addr)->sin_port = htons(port);
-    if (connect(s, (struct sockaddr *) server_res->ai_addr, server_res->ai_addrlen) < 0 && errno != EINPROGRESS) {
-	close(s);
+    if (connect(s, (struct sockaddr *) server_res->ai_addr, server_res->ai_addrlen) < 0 && h_errno != EINPROGRESS) {
+		_posix_closesocket(s);
 	freeaddrinfo(server_res);
         return -1;
     }
@@ -162,7 +162,7 @@ netannounce(int domain, int proto, char *local, int port)
     opt = 1;
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, 
 		   (char *) &opt, sizeof(opt)) < 0) {
-	close(s);
+	_posix_closesocket(s);
 	freeaddrinfo(res);
 	return -1;
     }
@@ -182,7 +182,7 @@ netannounce(int domain, int proto, char *local, int port)
 	    opt = 1;
 	if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, 
 		       (char *) &opt, sizeof(opt)) < 0) {
-	    close(s);
+		_posix_closesocket(s);
 	    freeaddrinfo(res);
 	    return -1;
 	}
@@ -190,7 +190,7 @@ netannounce(int domain, int proto, char *local, int port)
 #endif /* IPV6_V6ONLY */
 
     if (bind(s, (struct sockaddr *) res->ai_addr, res->ai_addrlen) < 0) {
-        close(s);
+		_posix_closesocket(s);
 	freeaddrinfo(res);
         return -1;
     }
@@ -199,7 +199,7 @@ netannounce(int domain, int proto, char *local, int port)
     
     if (proto == SOCK_STREAM) {
         if (listen(s, 5) < 0) {
-	    close(s);
+			_posix_closesocket(s);
             return -1;
         }
     }
@@ -221,7 +221,8 @@ Nread(int fd, char *buf, size_t count, int prot)
     while (nleft > 0) {
 		r = recv(fd, buf, nleft, 0);
         if (r < 0) {
-            if (errno == EINTR || errno == EAGAIN)
+	    int err = WSAGetLastError();
+	    if (err == WSAEINTR /*|| errno == EAGAIN*/ || err == WSAEWOULDBLOCK)
                 break;
             else
                 return NET_HARDERROR;
@@ -249,12 +250,15 @@ Nwrite(int fd, const char *buf, size_t count, int prot)
 		fflush(stdout);
 	r = send(fd, buf, nleft, 0);
 	if (r < 0) {
-	    switch (errno) {
-		case EINTR:
-		case EAGAIN:
+	    int err = WSAGetLastError();
+	    switch (err) {
+		case WSAEINTR:
+		//case EAGAIN:
+		// "Resource temporarily unavailable. [...] It is a nonfatal error, and the operation should be retried later."
+		case WSAEWOULDBLOCK:
 		return count - nleft;
 
-		case ENOBUFS:
+		case WSAENOBUFS:
 		return NET_SOFTERROR;
 
 		default:
@@ -378,6 +382,7 @@ getsock_tcp_mss(int inSock)
 /* sets TCP_NODELAY and TCP_MAXSEG if requested */
 // XXX: This function is not being used.
 
+#ifdef _D_U_M_M_Y_
 int
 set_tcp_options(int sock, int no_delay, int mss)
 {
@@ -420,6 +425,7 @@ set_tcp_options(int sock, int no_delay, int mss)
 #endif
     return 0;
 }
+#endif
 
 /****************************************************************************/
 
@@ -429,7 +435,7 @@ setnonblocking(int fd, int nonblocking)
 	u_long mode = !!nonblocking;
 	int result;
 
-	result = ioctlsocket((SOCKET)fd, FIONBIO, mode);
+	result = ioctlsocket((SOCKET)fd, FIONBIO, &mode);
 	return result;
 }
 

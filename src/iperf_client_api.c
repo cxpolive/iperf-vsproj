@@ -313,7 +313,7 @@ iperf_client_end(struct iperf_test *test)
 
     /* Close all stream sockets */
     SLIST_FOREACH(sp, &test->streams, streams) {
-        close(sp->socket);
+		_posix_closesocket(sp->socket);
     }
 
     /* show final summary */
@@ -357,7 +357,7 @@ iperf_run_client(struct iperf_test * test)
     if (test->json_output)
 	if (iperf_json_start(test) < 0)
 	    return -1;
-
+    
     if (test->json_output) {
 	cJSON_AddItemToObject(test->json_start, "version", cJSON_CreateString(version));
 	cJSON_AddItemToObject(test->json_start, "system_info", cJSON_CreateString(get_system_info()));
@@ -415,8 +415,9 @@ iperf_run_client(struct iperf_test * test)
 		    return -1;
 	    } else {
 		// Regular mode. Client sends.
-		if (iperf_send(test, &write_set) < 0)
+		if (iperf_send(test, &write_set) < 0) {
 		    return -1;
+		}
 	    }
 
             /* Run the timers. */

@@ -168,7 +168,7 @@ iperf_accept(struct iperf_test *test)
             i_errno = IESENDMESSAGE;
             return -1;
         }
-        close(s);
+        _posix_closesocket(s);
     }
 
     return 0;
@@ -205,7 +205,7 @@ iperf_handle_message_server(struct iperf_test *test)
             SLIST_FOREACH(sp, &test->streams, streams) {
                 FD_CLR(sp->socket, &test->read_set);
                 FD_CLR(sp->socket, &test->write_set);
-                close(sp->socket);
+				_posix_closesocket(sp->socket);
             }
 	    if (iperf_set_send_state(test, EXCHANGE_RESULTS) != 0)
                 return -1;
@@ -235,7 +235,7 @@ iperf_handle_message_server(struct iperf_test *test)
             SLIST_FOREACH(sp, &test->streams, streams) {
                 FD_CLR(sp->socket, &test->read_set);
                 FD_CLR(sp->socket, &test->write_set);
-                close(sp->socket);
+				_posix_closesocket(sp->socket);
             }
             test->state = IPERF_DONE;
             break;
@@ -253,7 +253,7 @@ iperf_test_reset(struct iperf_test *test)
 {
     struct iperf_stream *sp;
 
-    close(test->ctrl_sck);
+	_posix_closesocket(test->ctrl_sck);
 
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {
@@ -411,8 +411,8 @@ static void
 cleanup_server(struct iperf_test *test)
 {
     /* Close open test sockets */
-    close(test->ctrl_sck);
-    close(test->listener);
+	_posix_closesocket(test->ctrl_sck);
+	_posix_closesocket(test->listener);
 
     /* Cancel any remaining timers. */
     if (test->stats_timer != NULL) {
@@ -435,7 +435,7 @@ static jmp_buf sigend_jmp_buf;
 static void
 sigend_handler(int sig)
 {
-	printf("WTF\n");
+	printf("in sigend_handler\n");
 	fflush(stdout);
     longjmp(sigend_jmp_buf, 1);
 }
@@ -557,11 +557,11 @@ iperf_run_server(struct iperf_test *test)
                 if (streams_accepted == test->num_streams) {
                     if (test->protocol->id != Ptcp) {
                         FD_CLR(test->prot_listener, &test->read_set);
-                        close(test->prot_listener);
+						_posix_closesocket(test->prot_listener);
                     } else { 
                         if (test->no_delay || test->settings->mss || test->settings->socket_bufsize) {
                             FD_CLR(test->listener, &test->read_set);
-                            close(test->listener);
+							_posix_closesocket(test->listener);
                             if ((s = netannounce(test->settings->domain, Ptcp, test->bind_address, test->server_port)) < 0) {
 				cleanup_server(test);
                                 i_errno = IELISTEN;

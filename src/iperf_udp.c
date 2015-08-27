@@ -258,7 +258,7 @@ iperf_udp_accept(struct iperf_test *test)
 
     /* Let the client know we're ready "accept" another UDP "stream" */
     buf = 987654321;		/* any content will work here */
-    if (write(s, &buf, sizeof(buf)) < 0) {
+    if (send(s, &buf, sizeof(buf), 0) < 0) {
         i_errno = IESTREAMWRITE;
         return -1;
     }
@@ -338,7 +338,7 @@ iperf_udp_connect(struct iperf_test *test)
      * The server learns our address by obtaining its peer's address.
      */
     buf = 123456789;		/* this can be pretty much anything */
-    if (write(s, &buf, sizeof(buf)) < 0) {
+    if (send(s, &buf, sizeof(buf), 0) < 0) {
         // XXX: Should this be changed to IESTREAMCONNECT? 
         i_errno = IESTREAMWRITE;
         return -1;
