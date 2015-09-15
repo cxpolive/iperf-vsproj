@@ -120,6 +120,8 @@ const char usage_longstr[] = "Usage: iperf [-s|-c host] [options]\n"
                            "  -c, --client    <host>    run in client mode, connecting to <host>\n"
 #if defined(HAVE_SCTP)
                            "  --sctp                    use SCTP rather than TCP\n"
+                           "  -X, --xbind <name>        bind SCTP association to links\n"
+                           "  --nstreams      #         number of SCTP streams\n"
 #endif /* HAVE_SCTP */
                            "  -u, --udp                 use UDP rather than TCP\n"
                            "  -b, --bandwidth #[KMG][/#] target bandwidth in bits/sec (0 for unlimited)\n"
@@ -137,8 +139,8 @@ const char usage_longstr[] = "Usage: iperf [-s|-c host] [options]\n"
 #if defined(HAVE_TCP_CONGESTION)
                            "  -C, --congestion <algo>   set TCP congestion control algorithm (Linux and FreeBSD only)\n"
 #endif /* HAVE_TCP_CONGESTION */
-                           "  -M, --set-mss   #         set TCP maximum segment size (MTU - 40 bytes)\n"
-                           "  -N, --nodelay             set TCP no delay, disabling Nagle's Algorithm\n"
+                           "  -M, --set-mss   #         set TCP/SCTP maximum segment size (MTU - 40 bytes)\n"
+                           "  -N, --no-delay            set TCP/SCTP no delay, disabling Nagle's Algorithm\n"
                            "  -4, --version4            only use IPv4\n"
                            "  -6, --version6            only use IPv6\n"
                            "  -S, --tos N               set the IP 'type of service'\n"
@@ -161,9 +163,9 @@ const char usage_longstr[] = "Usage: iperf [-s|-c host] [options]\n"
                            "iperf3 homepage at: " PACKAGE_URL "\n"
 #endif /* PACKAGE_URL */
 #ifdef PACKAGE_BUGREPORT
-                           "Report bugs to:     " PACKAGE_BUGREPORT "\n";
+                           "Report bugs to:     " PACKAGE_BUGREPORT "\n"
 #endif /* PACKAGE_BUGREPORT */
-
+			   ;
 
 #ifdef OBSOLETE /* from old iperf: no longer supported. Add some of these back someday */
   "-d, --dualtest           Do a bidirectional test simultaneously\n"
@@ -364,6 +366,10 @@ const char report_tcpInfo[] =
 "event=TCP_Info CWND=%u SND_SSTHRESH=%u RCV_SSTHRESH=%u UNACKED=%u SACK=%u LOST=%u RETRANS=%u FACK=%u RTT=%u REORDERING=%u\n";
 #endif
 #if defined(__FreeBSD__)
+const char report_tcpInfo[] =
+"event=TCP_Info CWND=%u RCV_WIND=%u SND_SSTHRESH=%u RTT=%u\n";
+#endif
+#if defined(__NetBSD__)
 const char report_tcpInfo[] =
 "event=TCP_Info CWND=%u RCV_WIND=%u SND_SSTHRESH=%u RTT=%u\n";
 #endif

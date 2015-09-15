@@ -1,5 +1,5 @@
 /*
- * iperf, Copyright (c) 2014, The Regents of the University of
+ * iperf, Copyright (c) 2014, 2015, The Regents of the University of
  * California, through Lawrence Berkeley National Laboratory (subject
  * to receipt of any required approvals from the U.S. Dept. of
  * Energy).  All rights reserved.
@@ -636,6 +636,8 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 #endif /* HAVE_TCP_CONGESTION */
 #if defined(HAVE_SCTP)
         {"sctp", no_argument, NULL, OPT_SCTP},
+        {"nstreams", required_argument, NULL, OPT_NUMSTREAMS},
+        {"xbind", required_argument, NULL, 'X'},
 #endif
 	{"pidfile", required_argument, NULL, 'I'},
 	{"logfile", required_argument, NULL, OPT_LOGFILE},
@@ -652,10 +654,11 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char* comma;
 #endif /* HAVE_CPU_AFFINITY */
     char* slash;
+    struct xbind_entry *xbe;
 
     blksize = 0;
     server_flag = client_flag = rate_flag = duration_flag = 0;
-    while ((flag = getopt_long(argc, argv, "p:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:h", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "p:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'p':
                 test->server_port = atoi(optarg);
@@ -719,6 +722,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 #endif /* HAVE_SCTP */
             break;
 
+            case OPT_NUMSTREAMS:
+#if defined(linux) || defined(__FreeBSD__)
+                test->settings->num_ostreams = unit_atoi(optarg);
+                client_flag = 1;
+#else /* linux */
+                i_errno = IEUNIMP;
+                return -1;
+#endif /* linux */
             case 'b':
 		slash = strchr(optarg, '/');
 		if (slash) {
@@ -817,6 +828,20 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 i_errno = IEUNIMP;
                 return -1;
 #endif /* HAVE_FLOWLABEL */
+                break;
+            case 'X':
+		xbe = (struct xbind_entry *)malloc(sizeof(struct xbind_entry));
+                if (!xbe) {
+		    i_errno = IESETSCTPBINDX;
+                    return -1;
+                }
+	        memset(xbe, 0, sizeof(*xbe));
+                xbe->name = strdup(optarg);
+                if (!xbe->name) {
+		    i_errno = IESETSCTPBINDX;
+                    return -1;
+                }
+		TAILQ_INSERT_TAIL(&test->xbind_addrs, xbe, link);
                 break;
             case 'Z':
                 if (!has_sendfile()) {
@@ -1002,7 +1027,7 @@ iperf_check_throttle(struct iperf_stream *sp, struct timeval *nowP)
 int
 iperf_send(struct iperf_test *test, fd_set *write_setP)
 {
-    register int multisend, r;
+    register int multisend, r, streams_active;
     register struct iperf_stream *sp;
     struct timeval now;
 
@@ -1017,6 +1042,7 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
     for (; multisend > 0; --multisend) {
 	if (test->settings->rate != 0 && test->settings->burst == 0)
 	    gettimeofday(&now, NULL);
+	streams_active = 0;
 	SLIST_FOREACH(sp, &test->streams, streams) {
 	    if (sp->green_light &&
 	        (write_setP == NULL || FD_ISSET(sp->socket, write_setP))) {
@@ -1026,6 +1052,7 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
 		    i_errno = IESTREAMWRITE;
 		    return r;
 		}
+		streams_active = 1;
 		test->bytes_sent += r;
 		++test->blocks_sent;
 		if (test->settings->rate != 0 && test->settings->burst == 0)
@@ -1036,6 +1063,8 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
 		    break;
 	    }
 	}
+	if (!streams_active)
+	    break;
     }
     if (test->settings->burst != 0) {
 	gettimeofday(&now, NULL);
@@ -1728,6 +1757,7 @@ iperf_defaults(struct iperf_test *testp)
     testp->diskfile_name = (char*) 0;
     testp->affinity = -1;
     testp->server_affinity = -1;
+    TAILQ_INIT(&testp->xbind_addrs);
 #if defined(HAVE_CPUSET_SETAFFINITY)
     CPU_ZERO(&testp->cpumask);
 #endif /* HAVE_CPUSET_SETAFFINITY */
@@ -1841,6 +1871,18 @@ iperf_free_test(struct iperf_test *test)
 	free(test->server_hostname);
     if (test->bind_address)
 	free(test->bind_address);
+    if (!TAILQ_EMPTY(&test->xbind_addrs)) {
+        struct xbind_entry *xbe;
+
+        while (!TAILQ_EMPTY(&test->xbind_addrs)) {
+            xbe = TAILQ_FIRST(&test->xbind_addrs);
+            TAILQ_REMOVE(&test->xbind_addrs, xbe, link);
+            if (xbe->ai)
+                freeaddrinfo(xbe->ai);
+            free(xbe->name);
+            free(xbe);
+        }
+    }
     free(test->settings);
     if (test->title)
 	free(test->title);
@@ -1879,6 +1921,18 @@ iperf_free_test(struct iperf_test *test)
 	TAILQ_REMOVE(&test->server_output_list, t, textlineentries);
 	free(t->line);
 	free(t);
+    }
+
+    /* sctp_bindx: do not free the arguments, only the resolver results */
+    if (!TAILQ_EMPTY(&test->xbind_addrs)) {
+        struct xbind_entry *xbe;
+
+        TAILQ_FOREACH(xbe, &test->xbind_addrs, link) {
+            if (xbe->ai) {
+                freeaddrinfo(xbe->ai);
+                xbe->ai = NULL;
+            }
+        }
     }
 
     /* XXX: Why are we setting these values to NULL? */
@@ -2397,6 +2451,7 @@ iperf_reporter_callback(struct iperf_test *test)
             /* print interval results for each stream */
             iperf_print_intermediate(test);
             break;
+        case TEST_END:
         case DISPLAY_RESULTS:
             iperf_print_intermediate(test);
             iperf_print_results(test);
@@ -2487,6 +2542,9 @@ print_interval_results(struct iperf_test *test, struct iperf_stream *sp, cJSON *
 		iprintf(test, report_bw_udp_format, sp->socket, st, et, ubuf, nbuf, irp->jitter * 1000.0, irp->interval_cnt_error, irp->interval_packet_count, lost_percent, irp->omitted?report_omitted:"");
 	}
     }
+
+    if (test->logfile)
+        iflush(test);
 }
 
 /**************************************************************************/
