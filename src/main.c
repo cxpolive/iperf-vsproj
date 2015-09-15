@@ -129,12 +129,13 @@ main(int argc, char **argv)
 }
 
 
-static jmp_buf sigend_jmp_buf;
+//static jmp_buf sigend_jmp_buf;
+static struct iperf_test *sigend_test;
 
 static void
 sigend_handler(int sig)
 {
-    longjmp(sigend_jmp_buf, 1);
+    iperf_got_sigend(sigend_test);
 }
 
 /**************************************************************************/
@@ -144,9 +145,10 @@ run(struct iperf_test *test)
     int consecutive_errors;
 
     /* Termination signals. */
+    sigend_test = test;
     iperf_catch_sigend(sigend_handler);
-    if (setjmp(sigend_jmp_buf))
-	iperf_got_sigend(test);
+    /*if (setjmp(sigend_jmp_buf))
+	iperf_got_sigend(test);*/
 
     switch (test->role) {
         case 's':
