@@ -1759,6 +1759,15 @@ protocol_free(struct protocol *proto)
 int
 iperf_defaults(struct iperf_test *testp)
 {
+    // Retrieve path for temporary files
+    char temp_path[MAX_PATH];
+    char *temp_filename = "iperf3.XXXXXX";
+    if (!GetTempPath(MAX_PATH - strlen(temp_filename), temp_path)) {
+	iperf_errexit(testp, "unable to retrieve temporary directory name");
+    }
+    strcat(temp_path, temp_filename);
+    iperf_set_test_template(testp, temp_path);
+
     struct protocol *tcp, *udp;
 #if defined(HAVE_SCTP)
     struct protocol *sctp;
