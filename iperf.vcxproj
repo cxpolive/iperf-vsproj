@@ -58,7 +58,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)\pthreads-win32\include;$(SolutionDir)\win32-compat;$(SolutionDir)\getopt-port;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\win32-compat;$(SolutionDir)\getopt-port;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>

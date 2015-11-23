@@ -43,7 +43,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <pthread.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -52,7 +51,6 @@
 #include <sys/resource.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sched.h>
 #include <setjmp.h>
 #include <stdarg.h>
 
