@@ -9,7 +9,7 @@ $mergeparents = $mergeshasums[1..($mergeshasums.length-1)]
 $basedonmastersha = "?"
 
 ForEach ($parentsha in $mergeparents) {
-	$isInMaster = (git branch --contains "$parentsha" --color=never | sls " master\s*$").length
+	$isInMaster = (git branch --contains "$parentsha" --color=never --all | sls "[/\s]master\s*$").length
 	If ($isInMaster -gt 0) {
 		$basedonmastersha = $parentsha
 	}
